@@ -34,51 +34,79 @@ def main(args):
         iters = 10000
         print('Only the first 10k iterations are shown')
 
-
     # History for plotting
-    history_x = [state[0]]
-    history_y = [state[1]]
     full_history_x = [state[0]]
     full_history_y = [state[1]]
+    history_control = []
 
-    for iteration in range(iters):
+    for iter in range(iters):
         # Random application time
         delta_t = random.uniform(0.0, args.atime)
 
         match args.system:
             case "omni":    
-                ux = random.uniform(-args.velx, args.velx)
-                uy = random.uniform(-args.vely, args.vely)
+                u1 = random.uniform(-args.velx, args.velx)
+                u2 = random.uniform(-args.vely, args.vely)
                 
-                kyno = dp.HOLOCONTROLS(ux, uy, state[0], state[1])
-                new_state, sub_x, sub_y = kyno.propagation(delta_t)
+                kyno = dp.HOLOCONTROLS(u1, u2, state[0], state[1])
+            
+            case "first":
+                u1 = random.uniform(-args.vel, args.vel)
+                u2 = random.uniform(-args.ang, args.ang)
 
-                x, y = new_state[0], new_state[1]
+                kyno = dp.DDR_FIRST_PROPAGATION(
+                    u1, u2, state[0], state[1], state[2])
 
-                # YOUR FAVORITE COLLISION CHECKER HERE
+            case "second":
+                u1 = random.uniform(-args.accel, args.accel)
+                u2 = random.uniform(-args.accel, args.accel)
 
-                x, y = etools.bound_position(
-                    x, y, STATE_X_LOWER, STATE_X_UPPER, STATE_Y_LOWER, STATE_Y_UPPER)
+                kyno = dp.DDR_SECOND_PROPAGATION(
+                    u1, u2, state[3], state[4], state[0], state[1], state[2])
+                
+            case "carlike":
+                u1 = random.uniform(-args.vel, args.vel)
+                u2 = random.uniform(-args.ang, args.ang)
 
-                state[0], state[1] = x, y
-                history_x.append(x)
-                history_y.append(y)
+                kyno = dp.CARLIKE(u1, u2, state[0], state[1], state[2])
 
-                full_history_x += sub_x
-                full_history_y += sub_y
+            # TODO ACROBOT
+            
+        # Propagation process
+        new_state, sub_x, sub_y = kyno.propagation(delta_t)
+        
+        # YOUR FAVORITE COLLISION CHECKER HERE
 
+        # Position constraint
+        x, y = new_state[0], new_state[1]
+        x, y = etools.bound_position(
+            x, y, STATE_X_LOWER, STATE_X_UPPER, STATE_Y_LOWER, STATE_Y_UPPER)
+        
+        # New state -> Current state
+        new_state[0], new_state[1] = x, y
+        state = [new_state[_] for _ in range(len(new_state))]
+
+        full_history_x += sub_x
+        full_history_y += sub_y
+        history_control.append([u1, u2, delta_t])
+                  
 
     # Plot settings
     fig, ax = plt.subplots()
     ax.set_axis_off()
     ax.set_xlim([STATE_X_LOWER - 5, STATE_X_UPPER + 5])
     ax.set_ylim([STATE_Y_LOWER - 5, STATE_Y_UPPER + 5])
+    ax.set_title(args.system.upper())
+
+    # Display info
+    display = ax.text(STATE_X_LOWER - 3, STATE_Y_LOWER, '', size='small')
 
     # Background
-    img = plt.imread("./imgs/background.jpg")
+    img = plt.imread("./imgs/background.png")
     ax.imshow(img, extent=[STATE_X_LOWER - 5, STATE_X_UPPER + 5,
                            STATE_Y_LOWER - 5, STATE_Y_UPPER + 5])
 
+    # Walking sprite
     path_walking = './imgs/tile00'
     paths = [path_walking+str(x)+'.png' for x in range(6)]
     
@@ -93,20 +121,24 @@ def main(args):
         x, y = etools.bound_position(
             x, y, STATE_X_LOWER, STATE_X_UPPER, STATE_Y_LOWER, STATE_Y_UPPER)
 
-        ab = AnnotationBbox(getImage(paths[iter % 6]), (x, y), frameon=False)
+        ab = AnnotationBbox(getImage(paths[iter % len(paths)]), (x, y), frameon=False)
         point = ax.add_artist(ab)
 
         #point, = ax.plot(history_x[0], history_y[0], c='r', marker="o")
         #point.set_data([x], [y])
+        
+        full_string = f'Iteration: {iter}\nControl 1: {history_control[iter][0]}\n'
+        full_string += f'Control 2: {history_control[iter][1]}\nApplication Time: {history_control[iter][2]}\n'
+        full_string += f'Position: ({x:.3f}, {y:.3f})'
+        display.set_text(full_string)
 
-        return [point]
+        return [point] + [display,]
     
 
     anime = FuncAnimation(fig, update_animation, interval=50, blit=True, 
                           frames=np.linspace(0, iters, iters, endpoint=False))
 
     plt.show()
-
 
 
 parser = argparse.ArgumentParser()

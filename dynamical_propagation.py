@@ -156,7 +156,7 @@ class DDR_SECOND_PROPAGATION:
         return (h/3)*integral, substates
 
     # Propagation process, retrieves new states
-    def propagation(self, t):
+    def propagation(self, t, steps = 15):
         vl_new = np.sign(self.vl+self.al*t) * \
             min(abs(self.vl+self.al*t), self.V_max)
         vr_new = np.sign(self.vr+self.ar*t) * \
@@ -173,8 +173,8 @@ class DDR_SECOND_PROPAGATION:
             th_new %= 2*np.pi
 
         # New states + Substates
-        x_new, x_sub = self.simpson_1_3(0, t, 15, True)
-        y_new, y_sub = self.simpson_1_3(0, t, 15, False)
+        x_new, x_sub = self.simpson_1_3(0, t, steps, True)
+        y_new, y_sub = self.simpson_1_3(0, t, steps, False)
         x_new += self.x
         y_new += self.y
 
