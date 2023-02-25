@@ -132,11 +132,10 @@ def main(args):
         full_string += f'Position: ({x:.3f}, {y:.3f})'
         display.set_text(full_string)
 
-        return [point] + [display,]
+        return [point,] + [display,]
     
 
-    anime = FuncAnimation(fig, update_animation, interval=50, blit=True, 
-                          frames=np.linspace(0, iters, iters, endpoint=False))
+    anime = FuncAnimation(fig, update_animation, interval=10, blit=True, frames=iters)
 
     plt.show()
 
